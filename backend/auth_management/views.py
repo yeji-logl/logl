@@ -1,3 +1,5 @@
+import jwt
+from django.conf import settings
 from django.contrib.auth import login, logout
 from rest_framework import exceptions
 from rest_framework.views import APIView
@@ -5,9 +7,11 @@ from . import serializers
 from rest_framework.response import Response
 from rest_framework import status
 from .models import AuthUser
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import authenticate
-
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .serializers import LoginSerializer
 
 class Me(APIView):
     """
@@ -57,8 +61,9 @@ class Users(APIView):
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
 class SignIn(APIView):
+
+    permission_classes = [AllowAny]
 
     def post(self, request):
         email = request.data.get("email")
@@ -79,32 +84,44 @@ class SignIn(APIView):
             raise exceptions.AuthenticationFailed("Invalid email or password")
 
 
-    """"
-    Sign in
-    POST: Sign in
-    URL: /api/v1/users/sign-in
+class SignInJWT(APIView):
     """
-""" 
+    클라이언트 로그인 요청 시 토큰(access token /refresh token) 발급
+    POST /api/v1/users/sign-in-jwt
+    Content-Type: application/json
+    """
+    permission_classes = [AllowAny]
+
     def post(self, request):
-        username = request.data.get("username")
-        password = request.data.get("password")
-        if not username or not password:
-            raise exceptions.ParseError("username and password are required")
+        serializer = LoginSerializer(data=request.data)
 
-        user = authenticate(
-            request,
-            username=username,
-            password=password,
-        )
+        if serializer.is_valid():
+            email = serializer.validated_data["email"]
+            password = serializer.validated_data["password"]
 
-        if user:
-            login(request, user)
-            return Response(status=status.HTTP_200_OK)
+            #1. 사용자 인증
+            user = authenticate(
+                request,
+                username=email,
+                password=password,
+            )
+
+            if not user:
+                raise exceptions.AuthenticationFailed("Invalid email or password")
+            
+            # 토큰 발급
+            # python 코드에서 직접 RefreshToken 객체를 발급
+            # = TokenObtainPairView 와 동일한 로직
+            refresh = RefreshToken.for_user(user)
+            access = refresh.access_token
+
+            return Response({
+                "refresh": str(refresh),
+                "access": str(access),
+            }, status=status.HTTP_200_OK)
+            
         else:
-            raise exceptions.AuthenticationFailed("Invalid username or password")
-"""
-
-
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class SignOut(APIView):
     """
@@ -118,3 +135,4 @@ class SignOut(APIView):
     def post(self, request):
         logout(request)
         return Response(status=status.HTTP_200_OK)
+
