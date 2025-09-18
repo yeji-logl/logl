@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import AuthUser, UserAvatar, Regions, UserRegion
+from .models import AuthUser, UserAvatar, UserRegion
 
 
 @admin.register(AuthUser)
@@ -70,18 +70,6 @@ class UserAvatarAdmin(admin.ModelAdmin):
     ]
 
     list_filter = ("user", "is_primary")
-
-
-@admin.register(Regions)
-class RegionsAdmin(admin.ModelAdmin):
-    list_display = [
-        "code",
-        "level",
-        "parent_id",
-    ]
-
-    search_fields = ("code", "level", "parent_id", "ko", "en", "ja")
-
 
 @admin.register(UserRegion)
 class UserRegionAdmin(admin.ModelAdmin):

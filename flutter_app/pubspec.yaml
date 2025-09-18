@@ -38,7 +38,12 @@ dependencies:
   go_router: ^16.2.1
   intl: ^0.20.2
   json_annotation: ^4.9.0
+  kakao_flutter_sdk: ^1.9.7+3
   retrofit: ^4.7.2
+  kakao_flutter_sdk_common: ^1.9.7+3
+  kakao_flutter_sdk_user: ^1.9.7+3
+  dio: ^5.9.0
+
 
 dev_dependencies:
   flutter_test:

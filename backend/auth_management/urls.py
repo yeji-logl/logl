@@ -12,4 +12,7 @@ urlpatterns = [
     # refresh token 을 통해 access token 갱신
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("sign-out", views.SignOut.as_view()),
+    # kakao login
+    path("kakao/login/", views.KakaoLogin.as_view()),
+    path("<str:username>/check/", views.CheckUsernameView.as_view()),
 ]   

@@ -1,4 +1,5 @@
 import jwt
+import requests
 from django.conf import settings
 from django.contrib.auth import login, logout
 from rest_framework import exceptions
@@ -12,6 +13,7 @@ from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import LoginSerializer
+
 
 class Me(APIView):
     """
@@ -61,6 +63,7 @@ class Users(APIView):
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class SignIn(APIView):
 
     permission_classes = [AllowAny]
@@ -90,6 +93,7 @@ class SignInJWT(APIView):
     POST /api/v1/users/sign-in-jwt
     Content-Type: application/json
     """
+
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -99,7 +103,7 @@ class SignInJWT(APIView):
             email = serializer.validated_data["email"]
             password = serializer.validated_data["password"]
 
-            #1. 사용자 인증
+            # 1. 사용자 인증
             user = authenticate(
                 request,
                 username=email,
@@ -108,20 +112,53 @@ class SignInJWT(APIView):
 
             if not user:
                 raise exceptions.AuthenticationFailed("Invalid email or password")
-            
+
             # 토큰 발급
             # python 코드에서 직접 RefreshToken 객체를 발급
             # = TokenObtainPairView 와 동일한 로직
             refresh = RefreshToken.for_user(user)
             access = refresh.access_token
 
-            return Response({
-                "refresh": str(refresh),
-                "access": str(access),
-            }, status=status.HTTP_200_OK)
-            
+            return Response(
+                {
+                    "refresh": str(refresh),
+                    "access": str(access),
+                },
+                status=status.HTTP_200_OK,
+            )
+
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class KakaoLogin(APIView):
+    """
+    Kakao login
+    POST: Kakao login
+    URL: /api/v1/users/kakao/login
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        kakao_access_token = request.data.get("kakao_access_token")
+        headers = {
+            "Authorization": f"Bearer {kakao_access_token}",
+            "Content-Type": "application/json",
+        }
+
+        # kakao 사용자 정보 요청
+        kakao_response = requests.get(
+            "https://kapi.kakao.com/v2/user/me", headers=headers
+        )
+
+        if kakao_response.status_code != 200:
+            raise exceptions.AuthenticationFailed("Invalid kakao access token")
+
+        data = kakao_response.json()
+        kakao_email = data.get("kakao_account").get("email")
+
+
 
 class SignOut(APIView):
     """
@@ -135,4 +172,21 @@ class SignOut(APIView):
     def post(self, request):
         logout(request)
         return Response(status=status.HTTP_200_OK)
+
+
+class CheckUsernameView(APIView):
+    """
+    Check username
+    GET: Check username
+    URL: /api/v1/users/<str:username>/check
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request, username):
+        exists = AuthUser.objects.filter(username=username).exists()
+        return Response(
+            {"username": username, "available": not exists},
+            status=status.HTTP_200_OK,
+        )
 
